@@ -5,6 +5,11 @@ on:
     - cron: '0 1 */2 * *'
   workflow_dispatch:
 
+# 💡 新增权限：必须赋予 GITHUB_TOKEN 删除工作流记录的权限
+permissions:
+  actions: write 
+  contents: read
+
 jobs:
   keepalive:
     name: 🔄 执行保活
@@ -55,3 +60,13 @@ jobs:
           name: failure-screenshots
           path: test-results/
           retention-days: 7
+
+      # 💡 新增步骤：自动清理旧记录
+      - name: 🧹 清理旧运行记录 (仅保留最近3次)
+        if: always() # 无论前面的保活脚本成功还是失败，都执行清理
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0          # 不按天数保留
+          keep_minimum_runs: 3    # 只保留最近 3 次运行记录
