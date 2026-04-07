@@ -14,7 +14,6 @@
 |---|---|---|
 | `DISCORD_ACCOUNT` | `email,password` | ✅ |
 | `PANEL_ACCOUNT` | `username,password` | ✅ |
-| `PRIVATE_REPO_TOKEN` | `github_pat_xxxxxx` | ✅ |
 | `TG_BOT` | `chat_id,bot_token` | 可选 |
 | `GOST_PROXY` | `socks5://user:pass@host:port` | 可选 |
 
