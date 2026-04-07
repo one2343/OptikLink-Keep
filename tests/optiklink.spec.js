@@ -115,6 +115,9 @@ async function handleOAuthPage(page) {
 }
 
 test('OptikLink 保活', async ({ }, testInfo) => {
+    // 💡 核心修改 1：将测试总超时时间延长至 5 分钟 (300000 毫秒)
+    test.setTimeout(300000);
+
     const proxyUrl = '';
 
     if (!email || !password) {
@@ -413,21 +416,22 @@ test('OptikLink 保活', async ({ }, testInfo) => {
         console.log('🔍 检查服务器状态...');
         await serverPage.waitForTimeout(3000);
 
-        // 若服务器处于 CONNECTING / STARTING 等中间态，等待稳定
         let statusText = '';
         for (let i = 0; i < 12; i++) {
             statusText = await serverPage.locator('p.sc-168cvuh-1').innerText().catch(() => '');
             const s = statusText.toLowerCase();
-            if (s.includes('running') || s.includes('offline') || s.includes('stopped')) break;
+            // 💡 核心修改 2：把 starting 纳入跳出循环的条件，因为服务可能其实已经跑起来了
+            if (s.includes('running') || s.includes('starting') || s.includes('offline') || s.includes('stopped')) break;
             console.log(`  🔄 等待状态稳定（${statusText.trim()}）...`);
             await serverPage.waitForTimeout(5000);
         }
 
         console.log(`💻 服务器状态：${statusText.trim()}`);
 
-        if (statusText.toLowerCase().includes('running')) {
-            console.log('🎉 保活成功！');
-            await sendTG('✅ 保活成功！\n💻 服务器状态：🚀 Running', serverInfo.name);
+        // 💡 核心修改 3：只要是 running 或者 starting，都认定为在线/保活成功
+        if (statusText.toLowerCase().includes('running') || statusText.toLowerCase().includes('starting')) {
+            console.log('🎉 保活成功（服务已在线）！');
+            await sendTG(`✅ 保活成功！\n💻 服务器状态：🚀 ${statusText.trim()}`, serverInfo.name);
         } else if (statusText.toLowerCase().includes('offline') || statusText.toLowerCase().includes('stopped')) {
             console.log('⚠️ 服务器离线，尝试启动...');
             await serverPage.click('button:has-text("Start")');
@@ -438,15 +442,17 @@ test('OptikLink 保活', async ({ }, testInfo) => {
                 await serverPage.waitForTimeout(5000);
                 const s = await serverPage.locator('p.sc-168cvuh-1').innerText().catch(() => '');
                 console.log(`  🔄 第 ${i + 1} 次检查，状态：${s.trim()}`);
-                if (s.toLowerCase().includes('running')) {
+                // 同理，点击 Start 后，遇到 starting 也视为成功
+                if (s.toLowerCase().includes('running') || s.toLowerCase().includes('starting')) {
                     started = true;
+                    statusText = s;
                     break;
                 }
             }
 
             if (started) {
                 console.log('✅ 服务器已成功启动！');
-                await sendTG('🔄 Start 启动！\n💻 服务器状态：🚀 Running', serverInfo.name);
+                await sendTG(`🔄 Start 启动！\n💻 服务器状态：🚀 ${statusText.trim()}`, serverInfo.name);
             } else {
                 console.log('❌ 等待超时，服务器未能启动');
                 await sendTG('❌ Start 启动失败，等待超时\n💻 服务器状态：💤 Offline', serverInfo.name);
